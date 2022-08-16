@@ -6,7 +6,7 @@ Regex Intersect
 [<img alt="docs.rs" src="https://img.shields.io/badge/docs.rs-regex_intersect-66c2a5?style=for-the-badge&labelColor=555555&logo=docs.rs" height="20">](https://docs.rs/regex-intersect)
 [<img alt="build status" src="https://img.shields.io/github/workflow/status/jondot/regex-intersect/Build/master?style=for-the-badge" height="20">](https://github.com/jondot/regex-intersect/actions?query=branch%3Amaster)
 
-This is Rust library that finds out if two regexes have a non-empty intersection.
+This is a Rust library that finds out if two regexes have a non-empty intersection.
 
 ## Dependency
 
