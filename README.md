@@ -12,7 +12,7 @@ This is a Rust library that finds out if two regexes have a non-empty intersecti
 
 ```toml
 [dependencies]
-regex-intersect = "0.1.0"
+regex-intersect = "1.1.0"
 ```
 
 For most recent version see [crates.io](https://crates.io/crates/regex-intersect)
@@ -24,7 +24,7 @@ Import and use `non_empty`:
 
 ```rust
 use regex_intersect::non_empty;
-assert!(non_empty("a.*", "ab.*cd"))
+assert!(non_empty("a.*", "ab.*cd").expect("regex expressions should parse"))
 ```
 
 

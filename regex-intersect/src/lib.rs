@@ -12,7 +12,7 @@
 //!
 //! ```
 //! use regex_intersect::non_empty;
-//! assert!(non_empty("a.*", "ab.*cd"))
+//! assert!(non_empty("a.*", "ab.*cd").expect("regex expressions should parse"))
 //!```
 //!
 //! ## Tracing
@@ -30,6 +30,15 @@
 use regex_syntax::hir::{Class, ClassUnicode, Hir, HirKind, Literal, RepetitionKind};
 use regex_syntax::ParserBuilder;
 use std::borrow::BorrowMut;
+use thiserror::Error;
+
+/// An error in intersecting expressions
+#[derive(Debug, Error)]
+pub enum IntersectError {
+    /// An error parsing an expression
+    #[error("error while parsing expression: {0}")]
+    Parse(#[from] regex_syntax::Error),
+}
 
 fn maybe_trim<'a>(
     x: &'a Hir,
@@ -145,13 +154,11 @@ fn exp(left: &Hir, right: &Hir) -> bool {
 }
 
 #[cfg_attr(feature = "tracing", tracing::instrument)]
-fn hir(exp: &str) -> Hir {
+fn hir(exp: &str) -> Result<Hir, IntersectError> {
     let mut parser = ParserBuilder::new().allow_invalid_utf8(true).build();
-    parser.parse(exp).unwrap()
+    Ok(parser.parse(exp)?)
 }
 
-#[must_use]
-#[cfg_attr(feature = "tracing", tracing::instrument)]
 ///
 /// Check if `left` and `right` contains a non empty intersection.
 ///
@@ -159,17 +166,24 @@ fn hir(exp: &str) -> Hir {
 ///
 /// ```
 /// use regex_intersect::non_empty;
-/// assert!(non_empty("a.*", "ab.*cd"))
+/// assert!(non_empty("a.*", "ab.*cd").expect("regex expressions should parse"))
 ///```
-pub fn non_empty(left: &str, right: &str) -> bool {
+///
+/// ## Errors
+/// Returns an error if cannot parse one of the expressions
+///
+#[cfg_attr(feature = "tracing", tracing::instrument)]
+pub fn non_empty(left: &str, right: &str) -> Result<bool, IntersectError> {
     let trimmed =
-        trim(&hir(left), &hir(right), false).and_then(|(left, right)| trim(&left, &right, true));
-    trimmed.map_or(false, |(hl, hr)| exp(&hl, &hr))
+        trim(&hir(left)?, &hir(right)?, false).and_then(|(left, right)| trim(&left, &right, true));
+    Ok(trimmed.map_or(false, |(hl, hr)| exp(&hl, &hr)))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pretty_assertions::assert_eq;
+
     const NON_EMPTY: &[(&str, &[&str])] = &[
         ("abcd", &["abcd", "....", "[a-d]*"]),
         ("pqrs", &[".qrs", "p.rs", "pq.s", "pqr."]),
@@ -214,16 +228,28 @@ mod tests {
     ];
 
     #[test]
+    fn test_error() {
+        let err = format!("{}", non_empty("*", ".*g").unwrap_err());
+        assert_eq!(
+            r#"error while parsing expression: regex parse error:
+    *
+    ^
+error: repetition operator missing expression"#,
+            err
+        );
+    }
+
+    #[test]
     fn test_one() {
-        assert!(!non_empty(".*f", ".*g"));
+        assert!(!non_empty(".*f", ".*g").unwrap());
     }
 
     #[test]
     fn test_non_empty() {
         for (left, rights) in NON_EMPTY {
             for right in rights.iter() {
-                assert!(non_empty(left, right));
-                assert!(non_empty(right, left));
+                assert!(non_empty(left, right).unwrap());
+                assert!(non_empty(right, left).unwrap());
             }
         }
     }
@@ -232,8 +258,8 @@ mod tests {
     fn test_empty() {
         for (left, rights) in EMPTY {
             for right in rights.iter() {
-                assert!(!non_empty(left, right));
-                assert!(!non_empty(right, left));
+                assert!(!non_empty(left, right).unwrap());
+                assert!(!non_empty(right, left).unwrap());
             }
         }
     }
@@ -242,8 +268,8 @@ mod tests {
     fn test_extras_non_empty() {
         for (left, rights) in EXTRAS_NON_EMPTY {
             for right in rights.iter() {
-                assert!(non_empty(left, right));
-                assert!(non_empty(right, left));
+                assert!(non_empty(left, right).unwrap());
+                assert!(non_empty(right, left).unwrap());
             }
         }
     }
@@ -251,8 +277,8 @@ mod tests {
     fn test_extras_empty() {
         for (left, rights) in EXTRAS_EMPTY {
             for right in rights.iter() {
-                assert!(!non_empty(left, right));
-                assert!(!non_empty(right, left));
+                assert!(!non_empty(left, right).unwrap());
+                assert!(!non_empty(right, left).unwrap());
             }
         }
     }

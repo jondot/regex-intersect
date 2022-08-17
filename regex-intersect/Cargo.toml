@@ -1,6 +1,6 @@
 [package]
 name = "regex-intersect"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2021"
 
 description = "Find out if two regexes have a non-empty intersection"
@@ -18,9 +18,13 @@ tracing = ["dep:tracing", "dep:tracing-tree", "dep:tracing-subscriber"]
 
 [dependencies]
 
-"regex-syntax" = "^0.6.27"
+regex-syntax = "^0.6.27"
+thiserror = "1.0"
 tracing = { version = "^0.1.34", optional = true }
 tracing-tree = { version = "^0.2.1", optional = true }
 tracing-subscriber = { version = "^0.3.11", optional = true, features = [
   "env-filter",
 ] }
+
+[dev-dependencies]
+pretty_assertions = "^1.2.1"
