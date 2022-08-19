@@ -1,6 +1,6 @@
 [package]
 name = "regex-intersect"
-version = "1.1.0"
+version = "1.2.0"
 edition = "2021"
 
 description = "Find out if two regexes have a non-empty intersection"
@@ -15,11 +15,13 @@ readme = "../README.md"
 [features]
 default = []
 tracing = ["dep:tracing", "dep:tracing-tree", "dep:tracing-subscriber"]
+glob = ["dep:globset"]
 
 [dependencies]
 
 regex-syntax = "^0.6.27"
 thiserror = "1.0"
+globset = { version = "^0.4.9", optional = true }
 tracing = { version = "^0.1.34", optional = true }
 tracing-tree = { version = "^0.2.1", optional = true }
 tracing-subscriber = { version = "^0.3.11", optional = true, features = [
@@ -28,3 +30,7 @@ tracing-subscriber = { version = "^0.3.11", optional = true, features = [
 
 [dev-dependencies]
 pretty_assertions = "^1.2.1"
+
+[[example]]
+name = "demo"
+required-features = ["tracing", "glob"]

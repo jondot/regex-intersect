@@ -27,7 +27,11 @@
 #![warn(missing_docs)]
 #![allow(clippy::similar_names)]
 
-use regex_syntax::hir::{Class, ClassUnicode, Hir, HirKind, Literal, RepetitionKind};
+#[cfg(feature = "glob")]
+/// Glob intersect
+pub mod glob;
+
+use regex_syntax::hir::{Class, ClassBytes, ClassUnicode, Hir, HirKind, Literal, RepetitionKind};
 use regex_syntax::ParserBuilder;
 use std::borrow::BorrowMut;
 use thiserror::Error;
@@ -38,6 +42,10 @@ pub enum IntersectError {
     /// An error parsing an expression
     #[error("error while parsing expression: {0}")]
     Parse(#[from] regex_syntax::Error),
+
+    /// A general error
+    #[error("error: {0}")]
+    Error(String),
 }
 
 fn maybe_trim<'a>(
@@ -117,6 +125,13 @@ fn unicode_range(left: &ClassUnicode, right: &ClassUnicode) -> bool {
 }
 
 #[cfg_attr(feature = "tracing", tracing::instrument)]
+fn bytes_range(left: &ClassBytes, right: &ClassBytes) -> bool {
+    let mut rl = left.clone();
+    rl.borrow_mut().intersect(right);
+    rl.iter().count() > 0
+}
+
+#[cfg_attr(feature = "tracing", tracing::instrument)]
 fn literal(left: &Literal, right: &Literal) -> bool {
     left.eq(right)
 }
@@ -130,9 +145,20 @@ fn exp(left: &Hir, right: &Hir) -> bool {
         (HirKind::Class(Class::Unicode(left)), HirKind::Class(Class::Unicode(right))) => {
             unicode_range(left, right)
         }
+        (HirKind::Class(Class::Bytes(left)), HirKind::Class(Class::Bytes(right))) => {
+            bytes_range(left, right)
+        }
         (HirKind::Class(Class::Unicode(cls)), HirKind::Literal(Literal::Unicode(lit)))
         | (HirKind::Literal(Literal::Unicode(lit)), HirKind::Class(Class::Unicode(cls))) => {
             cls.iter().any(|c| *lit >= c.start() && *lit <= c.end())
+        }
+        (HirKind::Class(Class::Bytes(cls)), HirKind::Literal(Literal::Unicode(lit)))
+        | (HirKind::Literal(Literal::Unicode(lit)), HirKind::Class(Class::Bytes(cls))) => {
+            cls.iter().any(|c| {
+                let s = lit.to_string();
+                let litb = s.as_bytes();
+                litb.len() == 1 && litb[0] >= c.start() && litb[0] <= c.end()
+            })
         }
         (HirKind::Literal(left), HirKind::Literal(right)) => literal(left, right),
         (HirKind::Empty, HirKind::Repetition(rep)) | (HirKind::Repetition(rep), HirKind::Empty)
@@ -143,6 +169,8 @@ fn exp(left: &Hir, right: &Hir) -> bool {
         (HirKind::Repetition(left), HirKind::Repetition(right)) => exp(&left.hir, &right.hir),
         (HirKind::Repetition(left), _) => exp(&left.hir, right),
         (_, HirKind::Repetition(right)) => exp(left, &right.hir),
+
+        // don't care about empty and anchors
         (HirKind::Empty, HirKind::Empty) => true,
         _tup => {
             #[cfg(feature = "tracing")]
