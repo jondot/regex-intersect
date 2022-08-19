@@ -12,7 +12,7 @@ This is a Rust library that finds out if two regexes have a non-empty intersecti
 
 ```toml
 [dependencies]
-regex-intersect = "1.1.0"
+regex-intersect = "1.2.0"
 ```
 
 For most recent version see [crates.io](https://crates.io/crates/regex-intersect)
